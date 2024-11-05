@@ -11,6 +11,8 @@ interface GoalStore {
   updateTask: (goalId: string, taskId: string, updates: Partial<Task>) => void;
   deleteGoal: (goalId: string) => void;
   deleteTask: (goalId: string, taskId: string) => void;
+  completeGoal: (goalId: string) => void;
+  uncompleteGoal: (goalId: string) => void;
 }
 
 export const useGoalStore = create<GoalStore>((set) => ({
@@ -24,6 +26,7 @@ export const useGoalStore = create<GoalStore>((set) => ({
         timeFrame,
         priority,
         tasks: [],
+        completed: false,
         createdAt: new Date()
       }];
       storage.setGoals(newGoals);
@@ -94,6 +97,30 @@ export const useGoalStore = create<GoalStore>((set) => ({
         }
         return goal;
       });
+      storage.setGoals(newGoals);
+      return { goals: newGoals };
+    });
+  },
+
+  completeGoal: (goalId) => {
+    set((state) => {
+      const newGoals = state.goals.map((goal) =>
+        goal.id === goalId
+          ? { ...goal, completed: true, completedAt: new Date() }
+          : goal
+      );
+      storage.setGoals(newGoals);
+      return { goals: newGoals };
+    });
+  },
+
+  uncompleteGoal: (goalId) => {
+    set((state) => {
+      const newGoals = state.goals.map((goal) =>
+        goal.id === goalId
+          ? { ...goal, completed: false, completedAt: undefined }
+          : goal
+      );
       storage.setGoals(newGoals);
       return { goals: newGoals };
     });

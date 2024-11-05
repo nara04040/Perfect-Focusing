@@ -13,15 +13,15 @@ import {
 import { useGoalStore } from '@/store/goalStore';
 import { TimeFrame, Priority } from '@/types/goals';
 
-interface GoalStoreState {
-  addGoal: (title: string, timeFrame: TimeFrame, priority: Priority) => void;
+interface GoalFormProps {
+  defaultTimeFrame?: TimeFrame;
 }
 
-export function GoalForm() {
+export function GoalForm({ defaultTimeFrame = 'daily' }: GoalFormProps) {
   const [title, setTitle] = useState('');
-  const [timeFrame, setTimeFrame] = useState<TimeFrame>('daily');
+  const [timeFrame, setTimeFrame] = useState<TimeFrame>(defaultTimeFrame);
   const [priority, setPriority] = useState<Priority>('medium');
-  const addGoal = useGoalStore((state: GoalStoreState) => state.addGoal);
+  const addGoal = useGoalStore((state) => state.addGoal);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,16 +40,18 @@ export function GoalForm() {
         placeholder="목표를 입력하세요"
         required
       />
-      <Select value={timeFrame} onValueChange={(value: TimeFrame) => setTimeFrame(value)}>
-        <SelectTrigger>
-          <SelectValue placeholder="기간 선택" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="daily">Daily</SelectItem>
-          <SelectItem value="weekly">Weekly</SelectItem>
-          <SelectItem value="monthly">Monthly</SelectItem>
-        </SelectContent>
-      </Select>
+      {!defaultTimeFrame && (
+        <Select value={timeFrame} onValueChange={(value: TimeFrame) => setTimeFrame(value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="기간 선택" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="daily">Daily</SelectItem>
+            <SelectItem value="weekly">Weekly</SelectItem>
+            <SelectItem value="monthly">Monthly</SelectItem>
+          </SelectContent>
+        </Select>
+      )}
       <Select value={priority} onValueChange={(value: Priority) => setPriority(value)}>
         <SelectTrigger>
           <SelectValue placeholder="우선순위 선택" />
@@ -60,7 +62,7 @@ export function GoalForm() {
           <SelectItem value="low">Low</SelectItem>
         </SelectContent>
       </Select>
-      <Button type="submit">목표 추가</Button>
+          <Button type="submit">목표 추가</Button>
     </form>
   );
 } 

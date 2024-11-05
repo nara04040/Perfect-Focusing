@@ -17,5 +17,7 @@ export interface Goal {
   timeFrame: TimeFrame;
   priority: Priority;
   tasks: Task[];
+  completed: boolean;
+  completedAt?: Date;
   createdAt: Date;
 } 
