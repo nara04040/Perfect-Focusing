@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, CheckCircle2, CircleDashed } from "lucide-react";
+import { useRouter } from 'next/navigation';
 
 interface GoalItemProps {
   goal: Goal;
@@ -32,6 +33,7 @@ export function GoalItem({ goal }: GoalItemProps) {
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const { deleteGoal, completeGoal, uncompleteGoal } = useGoalStore();
+  const router = useRouter();
 
   const handleDeleteGoal = () => {
     if (confirm('정말로 이 목표를 삭제하시겠습니까?')) {
@@ -39,12 +41,28 @@ export function GoalItem({ goal }: GoalItemProps) {
     }
   };
 
-  const handleToggleComplete = () => {
+  const handleToggleComplete = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (goal.completed) {
       uncompleteGoal(goal.id);
     } else {
       completeGoal(goal.id);
     }
+  };
+
+  const handleStartFocus = () => {
+    if (!goal.completed && goal.tasks.some(task => !task.completed)) {
+      router.push(`/focus?goalId=${goal.id}`);
+    }
+  };
+
+  const handleAddTaskClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsAddingTask(true);
+  };
+
+  const handleTaskFormClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
   };
 
   if (isEditing) {
@@ -65,7 +83,14 @@ export function GoalItem({ goal }: GoalItemProps) {
   const progress = totalTasks === 0 ? 0 : (completedTasks / totalTasks) * 100;
 
   return (
-    <Card className={goal.completed ? 'bg-gray-50' : ''}>
+    <Card 
+      className={`${goal.completed ? 'bg-gray-50' : ''} ${
+        !goal.completed && goal.tasks.some(task => !task.completed) 
+          ? 'cursor-pointer hover:shadow-md transition-shadow' 
+          : ''
+      }`}
+      onClick={handleStartFocus}
+    >
       <CardHeader className="flex flex-row items-start justify-between space-y-0">
         <div className="flex items-start gap-2">
           <Button
@@ -109,7 +134,7 @@ export function GoalItem({ goal }: GoalItemProps) {
           </DropdownMenuContent>
         </DropdownMenu>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4" onClick={handleTaskFormClick}>
         {goal.tasks.map((task) => (
           <TaskItem key={task.id} goalId={goal.id} task={task} />
         ))}
@@ -123,7 +148,7 @@ export function GoalItem({ goal }: GoalItemProps) {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => setIsAddingTask(true)}
+            onClick={handleAddTaskClick}
           >
             할 일 추가
           </Button>
