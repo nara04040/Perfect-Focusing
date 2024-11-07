@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 interface GoalStore {
   goals: Goal[];
-  addGoal: (title: string, timeFrame: TimeFrame, priority: Priority) => void;
+  addGoal: (title: string, timeFrame: TimeFrame, priority: Priority, selectedDate?: Date) => void;
   addTask: (goalId: string, task: Omit<Task, 'id' | 'createdAt'>) => void;
   updateGoal: (goalId: string, updates: Partial<Goal>) => void;
   updateTask: (goalId: string, taskId: string, updates: Partial<Task>) => void;
@@ -18,7 +18,7 @@ interface GoalStore {
 export const useGoalStore = create<GoalStore>((set) => ({
   goals: storage.getGoals(),
   
-  addGoal: (title, timeFrame, priority) => {
+  addGoal: (title, timeFrame, priority, selectedDate) => {
     set((state) => {
       const newGoals = [...state.goals, {
         id: uuidv4(),
@@ -27,7 +27,7 @@ export const useGoalStore = create<GoalStore>((set) => ({
         priority,
         tasks: [],
         completed: false,
-        createdAt: new Date()
+        createdAt: selectedDate || new Date()
       }];
       storage.setGoals(newGoals);
       return { goals: newGoals };

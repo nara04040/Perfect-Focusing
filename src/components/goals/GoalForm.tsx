@@ -15,9 +15,15 @@ import { TimeFrame, Priority } from '@/types/goals';
 
 interface GoalFormProps {
   defaultTimeFrame?: TimeFrame;
+  selectedDate?: Date;
+  onComplete?: () => void;
 }
 
-export function GoalForm({ defaultTimeFrame = 'daily' }: GoalFormProps) {
+export function GoalForm({ 
+  defaultTimeFrame = 'daily', 
+  selectedDate,
+  onComplete 
+}: GoalFormProps) {
   const [title, setTitle] = useState('');
   const [timeFrame, setTimeFrame] = useState<TimeFrame>(defaultTimeFrame);
   const [priority, setPriority] = useState<Priority>('medium');
@@ -27,8 +33,9 @@ export function GoalForm({ defaultTimeFrame = 'daily' }: GoalFormProps) {
     e.preventDefault();
     if (!title.trim()) return;
     
-    addGoal(title, timeFrame, priority);
+    addGoal(title, timeFrame, priority, selectedDate);
     setTitle('');
+    onComplete?.();
   };
 
   return (
@@ -62,7 +69,7 @@ export function GoalForm({ defaultTimeFrame = 'daily' }: GoalFormProps) {
           <SelectItem value="low">Low</SelectItem>
         </SelectContent>
       </Select>
-          <Button type="submit">목표 추가</Button>
+      <Button type="submit">목표 추가</Button>
     </form>
   );
 } 
