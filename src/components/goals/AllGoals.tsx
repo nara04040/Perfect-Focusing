@@ -1,14 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useGoalStore } from '@/store/goalStore';
 import { GoalItem } from './GoalItem';
 import { TimeFrame, Priority, Goal } from '@/types/goals';
-import { useMemo } from 'react';
 import { GoalFilters } from './GoalFilters';
 import { DateSelector } from './DateSelector';
 import { GoalForm } from './GoalForm';
-import { isSameDay } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import {
@@ -18,9 +16,10 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { WeekSelector } from './WeekSelector';
-import { startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { startOfWeek, endOfWeek, isWithinInterval, isSameDay, isSameMonth, endOfMonth } from 'date-fns';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { MonthSelector } from './MonthSelector';
 
 const priorityOrder = {
   high: 3,
@@ -29,6 +28,7 @@ const priorityOrder = {
 };
 
 export function AllGoals() {
+  const [mounted, setMounted] = useState(false);
   const goals = useGoalStore((state) => state.goals);
   const [priority, setPriority] = useState<Priority | 'all'>('all');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -37,6 +37,9 @@ export function AllGoals() {
   const [selectedWeekDate, setSelectedWeekDate] = useState(new Date());
   const [selectedWeekDay, setSelectedWeekDay] = useState<Date | null>(null);
   const [showWeeklyGoalForm, setShowWeeklyGoalForm] = useState(false);
+  const [selectedMonthDate, setSelectedMonthDate] = useState(new Date());
+  const [selectedMonthDay, setSelectedMonthDay] = useState<Date | null>(null);
+  const [showMonthlyGoalForm, setShowMonthlyGoalForm] = useState(false);
 
   const goalsByTimeFrame = useMemo(() => {
     const filterAndSortGoals = (goals: Goal[]) => {
@@ -69,9 +72,24 @@ export function AllGoals() {
         }
         return isWithinInterval(goalDate, { start: weekStart, end: weekEnd });
       })),
-      monthly: filterAndSortGoals(goals.filter(goal => goal.timeFrame === 'monthly'))
+      monthly: filterAndSortGoals(goals.filter(goal => {
+        if (goal.timeFrame !== 'daily') return false;
+        const goalDate = new Date(goal.createdAt);
+        if (selectedMonthDay) {
+          return isSameDay(goalDate, selectedMonthDay);
+        }
+        return isSameMonth(goalDate, selectedMonthDate);
+      }))
     };
-  }, [goals, priority, sortOrder, selectedDate, selectedWeekDate, selectedWeekDay]);
+  }, [goals, priority, sortOrder, selectedDate, selectedWeekDate, selectedWeekDay, selectedMonthDate, selectedMonthDay]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className="h-screen flex items-center justify-center">Loading...</div>;
+  }
 
   const handleWeekDaySelect = (date: Date | null) => {
     setSelectedWeekDay(date);
@@ -102,6 +120,36 @@ export function AllGoals() {
         >
           <Plus className="h-4 w-4" />
           {selectedWeekDay ? "이 날의 목표 추가하기" : "이 주의 목표 추가하기"}
+        </Button>
+      </div>
+    );
+  };
+
+  const MonthlyEmptyGoalsMessage = () => {
+    const isPast = selectedMonthDay ? 
+      selectedMonthDay < new Date(new Date().setHours(0, 0, 0, 0)) :
+      endOfMonth(selectedMonthDate) < new Date();
+
+    if (isPast) {
+      return (
+        <div className="text-center py-8 text-gray-500">
+          {selectedMonthDay ? "해당 날짜에 설정된 목표가 없습니다." : "이 달에 설정된 목표가 없습니다."}
+        </div>
+      );
+    }
+
+    return (
+      <div className="text-center py-8 space-y-4">
+        <p className="text-gray-500">
+          {selectedMonthDay ? "해당 날짜에 설정된 목표가 없습니다." : "이 달에 설정된 목표가 없습니다."}
+        </p>
+        <Button
+          variant="outline"
+          onClick={() => setShowMonthlyGoalForm(true)}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          {selectedMonthDay ? "이 날의 목표 추가하기" : "이 달의 목표 추가하기"}
         </Button>
       </div>
     );
@@ -150,7 +198,7 @@ export function AllGoals() {
             ))
           ) : (
             <div className="text-center py-8 text-gray-500">
-              해당 날짜에 설정된 목표가 없습니다.
+              해당 날짜에 설정된 목표가 습니다.
             </div>
           )}
         </TabsContent>
@@ -168,7 +216,7 @@ export function AllGoals() {
                 <h3 className="text-lg font-medium">
                   {selectedWeekDay 
                     ? format(selectedWeekDay, 'PPP', { locale: ko }) + "의 새로운 목표"
-                    : `${format(startOfWeek(selectedWeekDate, { weekStartsOn: 1 }), 'yyyy년 MM월 d일')} - 
+                    : `${format(startOfWeek(selectedWeekDate, { weekStartsOn: 1 }), 'yyyy년 MM��� d일')} - 
                        ${format(endOfWeek(selectedWeekDate, { weekStartsOn: 1 }), 'MM월 d일')}의 새로운 목표`}
                 </h3>
                 <Button
@@ -216,14 +264,60 @@ export function AllGoals() {
         </TabsContent>
 
         <TabsContent value="monthly" className="space-y-4 mt-4">
-          {goalsByTimeFrame.monthly.length > 0 ? (
-            goalsByTimeFrame.monthly.map((goal) => (
-              <GoalItem key={goal.id} goal={goal} />
-            ))
-          ) : (
-            <div className="text-center py-4 text-gray-500">
-              목표가 없습니다.
+          <MonthSelector 
+            selectedDate={selectedMonthDate}
+            onDateChange={setSelectedMonthDate}
+            goals={goals}
+            onDaySelect={setSelectedMonthDay}
+          />
+          {showMonthlyGoalForm ? (
+            <div className="border rounded-lg p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">
+                  {selectedMonthDay 
+                    ? format(selectedMonthDay, 'PPP', { locale: ko }) + "의 새로운 목표"
+                    : format(selectedMonthDate, 'yyyy년 MM월', { locale: ko }) + "의 새로운 목표"}
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowMonthlyGoalForm(false)}
+                >
+                  취소
+                </Button>
+              </div>
+              <GoalForm 
+                defaultTimeFrame="daily"
+                selectedDate={selectedMonthDay || selectedMonthDate}
+                onComplete={() => setShowMonthlyGoalForm(false)}
+              />
             </div>
+          ) : goalsByTimeFrame.monthly.length > 0 ? (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">
+                  {selectedMonthDay ? (
+                    format(selectedMonthDay, 'PPP', { locale: ko })
+                  ) : (
+                    format(selectedMonthDate, 'yyyy년 MM월', { locale: ko }) + "의 목표"
+                  )}
+                </h3>
+                {selectedMonthDay && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedMonthDay(null)}
+                  >
+                    월간 전체 보기
+                  </Button>
+                )}
+              </div>
+              {goalsByTimeFrame.monthly.map((goal) => (
+                <GoalItem key={goal.id} goal={goal} />
+              ))}
+            </div>
+          ) : (
+            <MonthlyEmptyGoalsMessage />
           )}
         </TabsContent>
       </Tabs>
