@@ -97,7 +97,7 @@ export function MonthSelector({
 
       <div className="grid grid-cols-7 gap-1 text-center text-sm mb-2">
         {['월', '화', '수', '목', '금', '토', '일'].map((day) => (
-          <div key={day} className="py-2 font-medium">
+          <div key={day} className="py-1 font-medium">
             {day}
           </div>
         ))}
@@ -105,7 +105,7 @@ export function MonthSelector({
 
       <div className="space-y-1">
         {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className="grid grid-cols-7 gap-1">
+          <div key={weekIndex} className="grid grid-cols-7 gap-1 p-1">
             {week.map((day) => {
               const dayGoals = getGoalsForDay(day);
               const isToday = isSameDay(day, new Date());
@@ -115,17 +115,17 @@ export function MonthSelector({
                 <div key={day.toISOString()}>
                   <Button
                     variant="outline"
-                    className={`h-16 p-16 relative ${
-                      !isCurrentMonth ? 'text-gray-400' : ''
-                    } ${isToday ? 'border-blue-500' : ''}`}
+                    className={`w-11/12 h-16 p-16 relative ${
+                      !isCurrentMonth ? 'text-gray-400' : 'border-gray-400'
+                    } ${isToday ? 'border-blue-500 border-2' : ''}`}
                     onClick={() => onDaySelect(day)}
                   >
                     <div className="absolute top-1 left-1">
                       {format(day, 'd')}
                     </div>
                     {dayGoals.length > 0 && (
-                      <div className="absolute bottom-1 right-1">
-                        <div className="flex gap-0.5">
+                      <div className="absolute top-6 left-1">
+                        <div className="flex items-center gap-0.5">
                           {dayGoals.slice(0, 3).map((goal) => (
                             <div
                               key={goal.id}
