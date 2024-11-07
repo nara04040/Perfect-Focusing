@@ -17,6 +17,10 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
+import { WeekSelector } from './WeekSelector';
+import { startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { format } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 const priorityOrder = {
   high: 3,
@@ -30,17 +34,18 @@ export function AllGoals() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showGoalForm, setShowGoalForm] = useState(false);
+  const [selectedWeekDate, setSelectedWeekDate] = useState(new Date());
+  const [selectedWeekDay, setSelectedWeekDay] = useState<Date | null>(null);
+  const [showWeeklyGoalForm, setShowWeeklyGoalForm] = useState(false);
 
   const goalsByTimeFrame = useMemo(() => {
     const filterAndSortGoals = (goals: Goal[]) => {
       let filtered = goals;
       
-      // 우선순위 필터링
       if (priority !== 'all') {
         filtered = filtered.filter(goal => goal.priority === priority);
       }
 
-      // 우선순위 정렬
       return filtered.sort((a, b) => {
         const orderA = priorityOrder[a.priority];
         const orderB = priorityOrder[b.priority];
@@ -48,24 +53,39 @@ export function AllGoals() {
       });
     };
 
+    const weekStart = startOfWeek(selectedWeekDate, { weekStartsOn: 1 });
+    const weekEnd = endOfWeek(selectedWeekDate, { weekStartsOn: 1 });
+
     return {
       daily: filterAndSortGoals(goals.filter(goal => {
         if (goal.timeFrame !== 'daily') return false;
         return isSameDay(new Date(goal.createdAt), selectedDate);
       })),
-      weekly: filterAndSortGoals(goals.filter(goal => goal.timeFrame === 'weekly')),
+      weekly: filterAndSortGoals(goals.filter(goal => {
+        if (goal.timeFrame !== 'daily') return false;
+        const goalDate = new Date(goal.createdAt);
+        if (selectedWeekDay) {
+          return isSameDay(goalDate, selectedWeekDay);
+        }
+        return isWithinInterval(goalDate, { start: weekStart, end: weekEnd });
+      })),
       monthly: filterAndSortGoals(goals.filter(goal => goal.timeFrame === 'monthly'))
     };
-  }, [goals, priority, sortOrder, selectedDate]);
+  }, [goals, priority, sortOrder, selectedDate, selectedWeekDate, selectedWeekDay]);
 
-  const EmptyGoalsMessage = () => {
-    const isToday = isSameDay(selectedDate, new Date());
-    const isPast = selectedDate < new Date(new Date().setHours(0, 0, 0, 0));
+  const handleWeekDaySelect = (date: Date | null) => {
+    setSelectedWeekDay(date);
+  };
+
+  const WeeklyEmptyGoalsMessage = () => {
+    const isPast = selectedWeekDay ? 
+      selectedWeekDay < new Date(new Date().setHours(0, 0, 0, 0)) :
+      endOfWeek(selectedWeekDate, { weekStartsOn: 1 }) < new Date();
 
     if (isPast) {
       return (
         <div className="text-center py-8 text-gray-500">
-          해당 날짜에 설정된 목표가 없습니다.
+          {selectedWeekDay ? "해당 날짜에 설정된 목표가 없습니다." : "이 주에 설정된 목표가 없습니다."}
         </div>
       );
     }
@@ -73,15 +93,15 @@ export function AllGoals() {
     return (
       <div className="text-center py-8 space-y-4">
         <p className="text-gray-500">
-          {isToday ? "오늘 설정된 목표가 없습니다." : "해당 날짜에 설정된 목표가 없습니다."}
+          {selectedWeekDay ? "해당 날짜에 설정된 목표가 없습니다." : "이 주에 설정된 목표가 없습니다."}
         </p>
         <Button
           variant="outline"
-          onClick={() => setShowGoalForm(true)}
+          onClick={() => setShowWeeklyGoalForm(true)}
           className="gap-2"
         >
           <Plus className="h-4 w-4" />
-          {isToday ? "오늘의 목표 추가하기" : "이 날의 목표 추가하기"}
+          {selectedWeekDay ? "이 날의 목표 추가하기" : "이 주의 목표 추가하기"}
         </Button>
       </div>
     );
@@ -129,19 +149,69 @@ export function AllGoals() {
               <GoalItem key={goal.id} goal={goal} />
             ))
           ) : (
-            <EmptyGoalsMessage />
+            <div className="text-center py-8 text-gray-500">
+              해당 날짜에 설정된 목표가 없습니다.
+            </div>
           )}
         </TabsContent>
 
         <TabsContent value="weekly" className="space-y-4 mt-4">
-          {goalsByTimeFrame.weekly.length > 0 ? (
-            goalsByTimeFrame.weekly.map((goal) => (
-              <GoalItem key={goal.id} goal={goal} />
-            ))
-          ) : (
-            <div className="text-center py-4 text-gray-500">
-              목표가 없습니다.
+          <WeekSelector 
+            selectedDate={selectedWeekDate}
+            selectedDay={selectedWeekDay}
+            onDateChange={setSelectedWeekDate}
+            onDaySelect={handleWeekDaySelect}
+          />
+          {showWeeklyGoalForm ? (
+            <div className="border rounded-lg p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium">
+                  {selectedWeekDay 
+                    ? format(selectedWeekDay, 'PPP', { locale: ko }) + "의 새로운 목표"
+                    : `${format(startOfWeek(selectedWeekDate, { weekStartsOn: 1 }), 'yyyy년 MM월 d일')} - 
+                       ${format(endOfWeek(selectedWeekDate, { weekStartsOn: 1 }), 'MM월 d일')}의 새로운 목표`}
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowWeeklyGoalForm(false)}
+                >
+                  취소
+                </Button>
+              </div>
+              <GoalForm 
+                defaultTimeFrame="daily"
+                selectedDate={selectedWeekDay || selectedWeekDate}
+                onComplete={() => setShowWeeklyGoalForm(false)}
+              />
             </div>
+          ) : goalsByTimeFrame.weekly.length > 0 ? (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">
+                  {selectedWeekDay ? (
+                    format(selectedWeekDay, 'PPP', { locale: ko })
+                  ) : (
+                    `${format(startOfWeek(selectedWeekDate, { weekStartsOn: 1 }), 'yyyy년 MM월 d일')} - 
+                     ${format(endOfWeek(selectedWeekDate, { weekStartsOn: 1 }), 'MM월 d일')} 의 목표`
+                  )}
+                </h3>
+                {selectedWeekDay && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleWeekDaySelect(null)}
+                  >
+                    주간 전체 보기
+                  </Button>
+                )}
+              </div>
+              {goalsByTimeFrame.weekly.map((goal) => (
+                <GoalItem key={goal.id} goal={goal} />
+              ))}
+            </div>
+          ) : (
+            <WeeklyEmptyGoalsMessage />
           )}
         </TabsContent>
 
